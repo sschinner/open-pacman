@@ -110,6 +110,26 @@ function movePacman( game ) {
   wrapTunnel( p, width );
 }
 
+// Diana segun el kind del fantasma (celdas; no se exige que sean transitables).
+function targetFor( game, g ) {
+  const p = game.pacman;
+  const px = Math.round( p.x );
+  const py = Math.round( p.y );
+  const pd = DIRS[ p.dir ] || { x: 0, y: 0 };
+
+  if ( g.kind === 'ambusher' ) {
+    return { x: px + 4 * pd.x, y: py + 4 * pd.y };
+  }
+  if ( g.kind === 'flanker' ) {
+    // A = celda de Pac-Man + 2·DIRS[dir]; diana = chaser + 2·(A - chaser)
+    const a = { x: px + 2 * pd.x, y: py + 2 * pd.y };
+    const c = { x: px, y: py };
+    return { x: c.x + 2 * ( a.x - c.x ), y: c.y + 2 * ( a.y - c.y ) };
+  }
+  // chaser y shy en persecucion persiguen la celda redondeada de Pac-Man.
+  return { x: px, y: py };
+}
+
 function decideGhost( game, g ) {
   const grid = game.grid;
   const p = game.pacman;
@@ -120,25 +140,25 @@ function decideGhost( game, g ) {
   // Sin salida (callejon): permitir el giro de 180.
   const choices = options.length ? options : [ '' + OPPOSITE[ g.dir ] ];
 
-  if ( g.kind === 'hunter' ) {
-    const px = Math.round( p.x );
-    const py = Math.round( p.y );
-    let best = choices[ 0 ];
-    let bestDist = Infinity;
-    for ( const dir of choices ) {
-      const d = DIRS[ dir ];
-      const nx = g.x + d.x;
-      const ny = g.y + d.y;
-      const dist = Math.abs( nx - px ) + Math.abs( ny - py );
-      if ( dist < bestDist ) {
-        bestDist = dist;
-        best = dir;
-      }
+  // El shy huye (maximiza distancia) cuando esta a <=8 celdas de Pac-Man.
+  const flee =
+    g.kind === 'shy' &&
+    Math.abs( g.x - Math.round( p.x ) ) + Math.abs( g.y - Math.round( p.y ) ) <= 8;
+
+  const target = targetFor( game, g );
+  let best = choices[ 0 ];
+  let bestDist = flee ? -Infinity : Infinity;
+  for ( const dir of choices ) {
+    const d = DIRS[ dir ];
+    const nx = g.x + d.x;
+    const ny = g.y + d.y;
+    const dist = Math.abs( nx - target.x ) + Math.abs( ny - target.y );
+    if ( flee ? dist > bestDist : dist < bestDist ) {
+      bestDist = dist;
+      best = dir;
     }
-    g.dir = best;
-  } else {
-    g.dir = choices[ Math.floor( Math.random() * choices.length ) ];
   }
+  g.dir = best;
 }
 
 function moveGhost( game, g ) {
@@ -197,3 +217,4 @@ function update( game ) {
 window.createGame = createGame;
 window.update = update;
 window.DIRS = DIRS;
+window.targetFor = targetFor;
