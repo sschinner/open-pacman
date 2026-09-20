@@ -217,3 +217,4 @@ function update( game ) {
 window.createGame = createGame;
 window.update = update;
 window.DIRS = DIRS;
+window.targetFor = targetFor;

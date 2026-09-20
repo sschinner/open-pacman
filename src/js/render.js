@@ -151,6 +151,27 @@ const GHOST_COLORS = {
   shy: '#ffb852',
 };
 
+// Debug (?debug=true): marca la celda-diana de cada fantasma en su color y
+// etiqueta con su kind. Depende de targetFor (global de game.js).
+function drawDebugTargets( ctx, game ) {
+  for ( const g of game.ghosts ) {
+    const t = targetFor( game, g );
+    const color = GHOST_COLORS[ g.kind ] || '#ff0000';
+    const { cx, cy } = cellCenter( t.x, t.y );
+    ctx.fillStyle = color;
+    ctx.globalAlpha = 0.6;
+    ctx.beginPath();
+    ctx.arc( cx, cy, 4, 0, Math.PI * 2 );
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    ctx.font = '10px "Courier New", monospace';
+    ctx.textBaseline = 'bottom';
+    ctx.textAlign = 'center';
+    ctx.fillText( g.kind, cx, cy - 6 );
+  }
+}
+
 function draw( ctx, game, frame ) {
   const grid = game.grid;
   const W = grid[ 0 ].length;
@@ -164,6 +185,7 @@ function draw( ctx, game, frame ) {
   drawDots( ctx, grid );
   drawPacman( ctx, game.pacman, frame );
   game.ghosts.forEach( ( g ) => drawGhost( ctx, g, GHOST_COLORS[ g.kind ] || '#ff0000' ) );
+  if ( window.DEBUG ) drawDebugTargets( ctx, game );
   drawHUD( ctx, game, W );
 }
 

@@ -9,6 +9,9 @@ const actionBtn = document.getElementById( 'action-btn' );
 let game = createGame();
 let frame = 0;
 
+// Debug visual: ?debug=true dibuja dianas y kinds de los fantasmas (render.js).
+window.DEBUG = new URLSearchParams( location.search ).get( 'debug' ) === 'true';
+
 const KEY_DIR = {
   ArrowLeft: 'left',
   ArrowRight: 'right',
