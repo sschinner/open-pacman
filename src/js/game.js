@@ -110,8 +110,22 @@ function movePacman( game ) {
   wrapTunnel( p, width );
 }
 
+// Esta dentro del pen? Se decide solo por coordenadas del area (sin estado).
+function inPen( g ) {
+  const x = Math.round( g.x );
+  const y = Math.round( g.y );
+  return (
+    x >= PEN_BOUNDS.xMin &&
+    x <= PEN_BOUNDS.xMax &&
+    y >= PEN_BOUNDS.yMin &&
+    y <= PEN_BOUNDS.yMax
+  );
+}
+
 // Diana segun el kind del fantasma (celdas; no se exige que sean transitables).
 function targetFor( game, g ) {
+  if ( inPen( g ) ) return PEN_EXIT_TARGET;
+
   const p = game.pacman;
   const px = Math.round( p.x );
   const py = Math.round( p.y );
