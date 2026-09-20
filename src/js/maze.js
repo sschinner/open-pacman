@@ -57,8 +57,14 @@ const GHOST_STARTS = [
   { x: 13, y: 13, kind: 'flanker' },  // dentro de la pen
   { x: 14, y: 15, kind: 'shy' },      // dentro de la pen
 ];
+// Area interior del pen: filas 13-15, columnas 11-16 (celdas 0 transitables).
+const PEN_BOUNDS = { xMin: 11, xMax: 16, yMin: 13, yMax: 15 };
+// Celda encima de la puerta (fila 12), a la que se canalizan los fantasmas encerrados.
+const PEN_EXIT_TARGET = { x: 13, y: 11 };
 
 window.MAZE = MAZE;
 window.TUNNEL_ROW = TUNNEL_ROW;
 window.PACMAN_START = PACMAN_START;
 window.GHOST_STARTS = GHOST_STARTS;
+window.PEN_BOUNDS = PEN_BOUNDS;
+window.PEN_EXIT_TARGET = PEN_EXIT_TARGET;
