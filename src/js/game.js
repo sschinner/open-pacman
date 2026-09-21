@@ -13,6 +13,13 @@ const OPPOSITE = { left: 'right', right: 'left', up: 'down', down: 'up' };
 const PACMAN_SPEED = 0.125; // 1/8 celda/frame -> alinea cada 8 frames
 const GHOST_SPEED = 0.1;    // 1/10 celda/frame
 
+const DOT_POINTS = 10;
+const POWER_PELLET_POINTS = 50;
+const FRIGHT_SPEED = 0.05;    // 1/20 celda/frame -> alinea cada 20 frames
+const EYES_SPEED = 0.2;       // 1/5 celda/frame -> alinea cada 5 frames
+const FRIGHT_FRAMES = 360;    // ~6s a 60fps
+const FLASH_FRAMES = 120;     // ~2s finales de parpadeo
+
 // Crea una partida nueva. Copia MAZE (pristino) a game.grid para poder comer
 // dots sin destruir el original, y reiniciar.
 function createGame() {
@@ -21,13 +28,15 @@ function createGame() {
   grid[ PACMAN_START.y ][ PACMAN_START.x ] = 0;
 
   let dots = 0;
-  for ( const row of grid ) for ( const v of row ) if ( v === 2 ) dots++;
+  for ( const row of grid ) for ( const v of row ) if ( v === 2 || v === 4 ) dots++;
 
   return {
     state: 'start',
     score: 0,
     lives: 3,
     dotsRemaining: dots,
+    frightTimer: 0,
+    ghostCombo: null,
     grid,
     pacman: {
       x: PACMAN_START.x,
@@ -42,6 +51,7 @@ function createGame() {
       dir: 'up',
       speed: GHOST_SPEED,
       kind: g.kind,
+      mode: 'normal',
     } ) ),
   };
 }
@@ -97,8 +107,23 @@ function movePacman( game ) {
     // Comer dot.
     if ( grid[ p.y ][ p.x ] === 2 ) {
       grid[ p.y ][ p.x ] = 0;
-      game.score += 10;
+      game.score += DOT_POINTS;
       game.dotsRemaining--;
+    }
+    // Comer power pellet: puntos, reinicia timer y combo, asusta a los
+    // fantasmas en modo normal.
+    if ( grid[ p.y ][ p.x ] === 4 ) {
+      grid[ p.y ][ p.x ] = 0;
+      game.score += POWER_PELLET_POINTS;
+      game.dotsRemaining--;
+      game.frightTimer = FRIGHT_FRAMES;
+      game.ghostCombo = null;
+      game.ghosts.forEach( ( g ) => {
+        if ( g.mode === 'normal' ) {
+          g.mode = 'frightened';
+          g.speed = FRIGHT_SPEED;
+        }
+      } );
     }
     // Si no puede seguir, se detiene en la celda.
     if ( !canMove( grid, p.x, p.y, p.dir, 'pacman' ) ) return;
@@ -122,9 +147,17 @@ function inPen( g ) {
   );
 }
 
-// Diana segun el kind del fantasma (celdas; no se exige que sean transitables).
+// Centro del pen al que vuelven los ojos antes de reaparecer.
+const PEN_CENTER = { x: 13, y: 14 };
+
+// Diana segun el kind/modo del fantasma (celdas; no se exige que sean
+// transitables). Orden: pen -> eyes -> frightened -> reglas de kind.
 function targetFor( game, g ) {
   if ( inPen( g ) ) return PEN_EXIT_TARGET;
+  if ( g.mode === 'eyes' ) return PEN_CENTER;
+  if ( g.mode === 'frightened' ) {
+    return { x: Math.round( game.pacman.x ), y: Math.round( game.pacman.y ) };
+  }
 
   const p = game.pacman;
   const px = Math.round( p.x );
@@ -154,10 +187,12 @@ function decideGhost( game, g ) {
   // Sin salida (callejon): permitir el giro de 180.
   const choices = options.length ? options : [ '' + OPPOSITE[ g.dir ] ];
 
-  // El shy huye (maximiza distancia) cuando esta a <=8 celdas de Pac-Man.
+  // Huye (maximiza distancia) si esta asustado, o si es shy y esta a <=8
+  // celdas de Pac-Man.
   const flee =
-    g.kind === 'shy' &&
-    Math.abs( g.x - Math.round( p.x ) ) + Math.abs( g.y - Math.round( p.y ) ) <= 8;
+    g.mode === 'frightened' ||
+    ( g.kind === 'shy' &&
+      Math.abs( g.x - Math.round( p.x ) ) + Math.abs( g.y - Math.round( p.y ) ) <= 8 );
 
   const target = targetFor( game, g );
   let best = choices[ 0 ];
@@ -182,6 +217,11 @@ function moveGhost( game, g ) {
   if ( aligned( g.x ) && aligned( g.y ) ) {
     g.x = Math.round( g.x );
     g.y = Math.round( g.y );
+    // Los ojos que entran al pen reaparecen (normal, luz normal).
+    if ( g.mode === 'eyes' && inPen( g ) ) {
+      g.mode = 'normal';
+      g.speed = GHOST_SPEED;
+    }
     decideGhost( game, g );
     if ( !canMove( grid, g.x, g.y, g.dir, 'ghost' ) ) return;
   }
@@ -202,26 +242,60 @@ function resetPositions( game ) {
     g.x = GHOST_STARTS[ i ].x;
     g.y = GHOST_STARTS[ i ].y;
     g.dir = 'up';
+    g.mode = 'normal';
+    g.speed = GHOST_SPEED;
   } );
+  // Morir cancela el pánico.
+  game.frightTimer = 0;
+  game.ghostCombo = null;
 }
 
 function collides( a, b ) {
   return Math.abs( a.x - b.x ) < 0.5 && Math.abs( a.y - b.y ) < 0.5;
 }
 
+// Cuenta atras del pánico. Al llegar a 0, los asustados vuelven a normal.
+function updateFrightTimer( game ) {
+  if ( game.frightTimer > 0 ) {
+    game.frightTimer--;
+    if ( game.frightTimer === 0 ) {
+      game.ghosts.forEach( ( g ) => {
+        if ( g.mode === 'frightened' ) {
+          g.mode = 'normal';
+          g.speed = GHOST_SPEED;
+        }
+      } );
+    }
+  }
+}
+
 function update( game ) {
+  updateFrightTimer( game );
   movePacman( game );
   game.ghosts.forEach( ( g ) => moveGhost( game, g ) );
 
   for ( const g of game.ghosts ) {
     if ( collides( game.pacman, g ) ) {
-      game.lives--;
-      if ( game.lives <= 0 ) {
-        game.state = 'lost';
-        return;
+      if ( g.mode === 'frightened' ) {
+        // Asustado: se lo come. Combo 200/400/800/1600 por pellet.
+        game.ghostCombo = game.ghostCombo === null ? 200 : game.ghostCombo * 2;
+        game.score += game.ghostCombo;
+        // Snap a la celda: los ojos salen en fase alineada y pueden volver al pen.
+        g.x = Math.round( g.x );
+        g.y = Math.round( g.y );
+        g.mode = 'eyes';
+        g.speed = EYES_SPEED;
+      } else if ( g.mode === 'normal' ) {
+        // Normal: pierde una vida y se resetea todo (cancela el pánico).
+        game.lives--;
+        if ( game.lives <= 0 ) {
+          game.state = 'lost';
+          return;
+        }
+        resetPositions( game );
+        break;
       }
-      resetPositions( game );
-      break;
+      // eyes: se ignora.
     }
   }
 
@@ -232,3 +306,4 @@ window.createGame = createGame;
 window.update = update;
 window.DIRS = DIRS;
 window.targetFor = targetFor;
+window.FLASH_FRAMES = FLASH_FRAMES;
