@@ -1,6 +1,6 @@
 # SPEC 01 — 4 fantasmas con personalidades clásicas
 
-> **Status:** Approved
+> **Status:** Implemented
 > **Date:** 2026-09-20
 > **Objective:** Sustituir los 2 fantasmas genéricos por 4 con personalidades clásicas distintas, una de ellas persiguiendo agresivamente a Pac-Man.
 

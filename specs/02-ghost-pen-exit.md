@@ -1,6 +1,6 @@
 # SPEC 02 — Salida de los fantasmas desde el pen
 
-> **Status:** Approved
+> **Status:** Implemented
 > **Depends on:** SPEC 01
 > **Date:** 2026-09-20
 > **Objective:** Hacer que los 4 fantasmas salgan del pen al inicio de la partida en lugar de quedar atrapados dentro de la jaula.

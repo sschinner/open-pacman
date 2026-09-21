@@ -1,6 +1,6 @@
 # SPEC 03 — Power pellets y modo asustado
 
-> **Status:** Approved
+> **Status:** Implemented
 > **Depends on:** SPEC 01, SPEC 02
 > **Date:** 2026-09-21
 > **Objective:** Añadir 4 power pellets que pongan a los fantasmas en modo asustado (azules, lentos, huidizos) y permitan a Pac-Man comerlos para sumar puntos.
