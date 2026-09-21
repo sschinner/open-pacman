@@ -242,7 +242,12 @@ function resetPositions( game ) {
     g.x = GHOST_STARTS[ i ].x;
     g.y = GHOST_STARTS[ i ].y;
     g.dir = 'up';
+    g.mode = 'normal';
+    g.speed = GHOST_SPEED;
   } );
+  // Morir cancela el pánico.
+  game.frightTimer = 0;
+  game.ghostCombo = null;
 }
 
 function collides( a, b ) {
@@ -271,13 +276,23 @@ function update( game ) {
 
   for ( const g of game.ghosts ) {
     if ( collides( game.pacman, g ) ) {
-      game.lives--;
-      if ( game.lives <= 0 ) {
-        game.state = 'lost';
-        return;
+      if ( g.mode === 'frightened' ) {
+        // Asustado: se lo come. Combo 200/400/800/1600 por pellet.
+        game.ghostCombo = game.ghostCombo === null ? 200 : game.ghostCombo * 2;
+        game.score += game.ghostCombo;
+        g.mode = 'eyes';
+        g.speed = EYES_SPEED;
+      } else if ( g.mode === 'normal' ) {
+        // Normal: pierde una vida y se resetea todo (cancela el pánico).
+        game.lives--;
+        if ( game.lives <= 0 ) {
+          game.state = 'lost';
+          return;
+        }
+        resetPositions( game );
+        break;
       }
-      resetPositions( game );
-      break;
+      // eyes: se ignora.
     }
   }
 
