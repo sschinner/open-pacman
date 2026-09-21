@@ -147,9 +147,17 @@ function inPen( g ) {
   );
 }
 
-// Diana segun el kind del fantasma (celdas; no se exige que sean transitables).
+// Centro del pen al que vuelven los ojos antes de reaparecer.
+const PEN_CENTER = { x: 13, y: 14 };
+
+// Diana segun el kind/modo del fantasma (celdas; no se exige que sean
+// transitables). Orden: pen -> eyes -> frightened -> reglas de kind.
 function targetFor( game, g ) {
   if ( inPen( g ) ) return PEN_EXIT_TARGET;
+  if ( g.mode === 'eyes' ) return PEN_CENTER;
+  if ( g.mode === 'frightened' ) {
+    return { x: Math.round( game.pacman.x ), y: Math.round( game.pacman.y ) };
+  }
 
   const p = game.pacman;
   const px = Math.round( p.x );
@@ -179,10 +187,12 @@ function decideGhost( game, g ) {
   // Sin salida (callejon): permitir el giro de 180.
   const choices = options.length ? options : [ '' + OPPOSITE[ g.dir ] ];
 
-  // El shy huye (maximiza distancia) cuando esta a <=8 celdas de Pac-Man.
+  // Huye (maximiza distancia) si esta asustado, o si es shy y esta a <=8
+  // celdas de Pac-Man.
   const flee =
-    g.kind === 'shy' &&
-    Math.abs( g.x - Math.round( p.x ) ) + Math.abs( g.y - Math.round( p.y ) ) <= 8;
+    g.mode === 'frightened' ||
+    ( g.kind === 'shy' &&
+      Math.abs( g.x - Math.round( p.x ) ) + Math.abs( g.y - Math.round( p.y ) ) <= 8 );
 
   const target = targetFor( game, g );
   let best = choices[ 0 ];
@@ -207,6 +217,11 @@ function moveGhost( game, g ) {
   if ( aligned( g.x ) && aligned( g.y ) ) {
     g.x = Math.round( g.x );
     g.y = Math.round( g.y );
+    // Los ojos que entran al pen reaparecen (normal, luz normal).
+    if ( g.mode === 'eyes' && inPen( g ) ) {
+      g.mode = 'normal';
+      g.speed = GHOST_SPEED;
+    }
     decideGhost( game, g );
     if ( !canMove( grid, g.x, g.y, g.dir, 'ghost' ) ) return;
   }
