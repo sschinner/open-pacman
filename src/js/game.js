@@ -280,6 +280,9 @@ function update( game ) {
         // Asustado: se lo come. Combo 200/400/800/1600 por pellet.
         game.ghostCombo = game.ghostCombo === null ? 200 : game.ghostCombo * 2;
         game.score += game.ghostCombo;
+        // Snap a la celda: los ojos salen en fase alineada y pueden volver al pen.
+        g.x = Math.round( g.x );
+        g.y = Math.round( g.y );
         g.mode = 'eyes';
         g.speed = EYES_SPEED;
       } else if ( g.mode === 'normal' ) {
@@ -303,3 +306,4 @@ window.createGame = createGame;
 window.update = update;
 window.DIRS = DIRS;
 window.targetFor = targetFor;
+window.FLASH_FRAMES = FLASH_FRAMES;

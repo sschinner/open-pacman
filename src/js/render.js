@@ -111,30 +111,33 @@ function drawPacman( ctx, p, frame ) {
   ctx.fill();
 }
 
-function drawGhost( ctx, g, color ) {
+function drawGhost( ctx, g, mode, color ) {
   const { cx, cy } = cellCenter( g.x, g.y );
-  const r = TILE / 2 - 1;
-  const top = cy - r;
-  const bottom = cy + r;
-  const left = cx - r;
-  const right = cx + r;
-
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.arc( cx, cy - 1, r, Math.PI, 0, false ); // cabeza
-  ctx.lineTo( right, bottom );
-  // falda ondulada (3 picos)
-  ctx.lineTo( right - r * 0.66, bottom - 4 );
-  ctx.lineTo( cx, bottom );
-  ctx.lineTo( left + r * 0.66, bottom - 4 );
-  ctx.lineTo( left, bottom );
-  ctx.closePath();
-  ctx.fill();
-
-  // ojos mirando segun direccion
   const dir = DIRS[ g.dir ] || { x: 0, y: 0 };
   const ex = dir.x * 1.6;
   const ey = dir.y * 1.6;
+
+  // eyes: solo los ojos, sin cuerpo.
+  if ( mode !== 'eyes' ) {
+    const r = TILE / 2 - 1;
+    const top = cy - r;
+    const bottom = cy + r;
+    const left = cx - r;
+    const right = cx + r;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc( cx, cy - 1, r, Math.PI, 0, false ); // cabeza
+    ctx.lineTo( right, bottom );
+    // falda ondulada (3 picos)
+    ctx.lineTo( right - r * 0.66, bottom - 4 );
+    ctx.lineTo( cx, bottom );
+    ctx.lineTo( left + r * 0.66, bottom - 4 );
+    ctx.lineTo( left, bottom );
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // ojos mirando segun direccion
   for ( const off of [ -3.5, 3.5 ] ) {
     ctx.fillStyle = '#fff';
     ctx.beginPath();
@@ -145,6 +148,17 @@ function drawGhost( ctx, g, color ) {
     ctx.arc( cx + off + ex, cy - 1 + ey, 1.5, 0, Math.PI * 2 );
     ctx.fill();
   }
+}
+
+// Color del fantasma segun modo; en pánico azul, con parpadeo blanco en los
+// FLASH_FRAMES finales (alterna cada ~8 frames).
+function ghostColor( g, game, frame ) {
+  if ( g.mode === 'frightened' ) {
+    const blink =
+      game.frightTimer <= FLASH_FRAMES && Math.floor( frame / 8 ) % 2 === 1;
+    return blink ? '#ffffff' : '#2121ff';
+  }
+  return GHOST_COLORS[ g.kind ] || '#ff0000';
 }
 
 function drawHUD( ctx, game, W ) {
@@ -165,12 +179,14 @@ const GHOST_COLORS = {
 };
 
 // Debug (?debug=true): marca la celda-diana de cada fantasma en su color y
-// etiqueta con su kind. Depende de targetFor (global de game.js).
+// etiqueta con su kind y modo (normal/frightened/eyes). Depende de targetFor
+// (global de game.js).
 function drawDebugTargets( ctx, game ) {
   for ( const g of game.ghosts ) {
     const t = targetFor( game, g );
     const color = GHOST_COLORS[ g.kind ] || '#ff0000';
     const { cx, cy } = cellCenter( t.x, t.y );
+
     ctx.fillStyle = color;
     ctx.globalAlpha = 0.6;
     ctx.beginPath();
@@ -181,7 +197,7 @@ function drawDebugTargets( ctx, game ) {
     ctx.font = '10px "Courier New", monospace';
     ctx.textBaseline = 'bottom';
     ctx.textAlign = 'center';
-    ctx.fillText( g.kind, cx, cy - 6 );
+    ctx.fillText( g.kind + ' ' + g.mode, cx, cy - 6 );
   }
 }
 
@@ -198,7 +214,7 @@ function draw( ctx, game, frame ) {
   drawDots( ctx, grid );
   drawPowerPellets( ctx, grid );
   drawPacman( ctx, game.pacman, frame );
-  game.ghosts.forEach( ( g ) => drawGhost( ctx, g, GHOST_COLORS[ g.kind ] || '#ff0000' ) );
+  game.ghosts.forEach( ( g ) => drawGhost( ctx, g, g.mode, ghostColor( g, game, frame ) ) );
   if ( window.DEBUG ) drawDebugTargets( ctx, game );
   drawHUD( ctx, game, W );
 }
