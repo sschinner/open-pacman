@@ -13,6 +13,13 @@ const OPPOSITE = { left: 'right', right: 'left', up: 'down', down: 'up' };
 const PACMAN_SPEED = 0.125; // 1/8 celda/frame -> alinea cada 8 frames
 const GHOST_SPEED = 0.1;    // 1/10 celda/frame
 
+const DOT_POINTS = 10;
+const POWER_PELLET_POINTS = 50;
+const FRIGHT_SPEED = 0.05;    // 1/20 celda/frame -> alinea cada 20 frames
+const EYES_SPEED = 0.2;       // 1/5 celda/frame -> alinea cada 5 frames
+const FRIGHT_FRAMES = 360;    // ~6s a 60fps
+const FLASH_FRAMES = 120;     // ~2s finales de parpadeo
+
 // Crea una partida nueva. Copia MAZE (pristino) a game.grid para poder comer
 // dots sin destruir el original, y reiniciar.
 function createGame() {
@@ -28,6 +35,8 @@ function createGame() {
     score: 0,
     lives: 3,
     dotsRemaining: dots,
+    frightTimer: 0,
+    ghostCombo: null,
     grid,
     pacman: {
       x: PACMAN_START.x,
@@ -42,6 +51,7 @@ function createGame() {
       dir: 'up',
       speed: GHOST_SPEED,
       kind: g.kind,
+      mode: 'normal',
     } ) ),
   };
 }
@@ -97,8 +107,23 @@ function movePacman( game ) {
     // Comer dot.
     if ( grid[ p.y ][ p.x ] === 2 ) {
       grid[ p.y ][ p.x ] = 0;
-      game.score += 10;
+      game.score += DOT_POINTS;
       game.dotsRemaining--;
+    }
+    // Comer power pellet: puntos, reinicia timer y combo, asusta a los
+    // fantasmas en modo normal.
+    if ( grid[ p.y ][ p.x ] === 4 ) {
+      grid[ p.y ][ p.x ] = 0;
+      game.score += POWER_PELLET_POINTS;
+      game.dotsRemaining--;
+      game.frightTimer = FRIGHT_FRAMES;
+      game.ghostCombo = null;
+      game.ghosts.forEach( ( g ) => {
+        if ( g.mode === 'normal' ) {
+          g.mode = 'frightened';
+          g.speed = FRIGHT_SPEED;
+        }
+      } );
     }
     // Si no puede seguir, se detiene en la celda.
     if ( !canMove( grid, p.x, p.y, p.dir, 'pacman' ) ) return;
@@ -209,7 +234,23 @@ function collides( a, b ) {
   return Math.abs( a.x - b.x ) < 0.5 && Math.abs( a.y - b.y ) < 0.5;
 }
 
+// Cuenta atras del pánico. Al llegar a 0, los asustados vuelven a normal.
+function updateFrightTimer( game ) {
+  if ( game.frightTimer > 0 ) {
+    game.frightTimer--;
+    if ( game.frightTimer === 0 ) {
+      game.ghosts.forEach( ( g ) => {
+        if ( g.mode === 'frightened' ) {
+          g.mode = 'normal';
+          g.speed = GHOST_SPEED;
+        }
+      } );
+    }
+  }
+}
+
 function update( game ) {
+  updateFrightTimer( game );
   movePacman( game );
   game.ghosts.forEach( ( g ) => moveGhost( game, g ) );
 
